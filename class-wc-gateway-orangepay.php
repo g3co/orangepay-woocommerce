@@ -172,22 +172,39 @@ function woocommerce_orangepay()
             // Add this action hook if you want your custom payment gateway to support it
             do_action('woocommerce_credit_card_form_start', $this->id);
 
+            $month_list = '<select id="' . $form_id . '-expdate-month" name="' . $form_id . '-expdate-month">';
+
+            for ($i=1; $i <= 12; $i++) {
+                $selected = "";
+                if ((int)date("m") == $i) {
+                    $selected = "selected";
+                }
+                $month_list .= sprintf('<option value="%02d" %s>%02d</option>', $i, $selected, $i);
+            }
+
+            $month_list .= '</select>';
+
+            $year_list = '<select id="' . $form_id . '-expdate-year" name="' . $form_id . '-expdate-year">';
+
+            for ($i=date("y"); $i <= date("y") + 20; $i++) {
+                $year_list .= sprintf('<option value="%02d">%02d</option>', $i, $i);
+            }
+
+            $year_list .= '</select>';
+
+
             // I recommend to use inique IDs, because other gateways could already use #ccNo, #expdate, #cvc
             echo '<div class="form-row form-row-wide"><label>Card Holder <span class="required">*</span></label>
                     <input id="' . $form_id . '-card-holder" type="text" name="' . $form_id . '-card-holder" autocomplete="off">
                 </div>
                 <div class="form-row form-row-wide"><label>Card Number <span class="required">*</span></label>
-                    <input id="' . $form_id . '-ccNo" type="text" name="' . $form_id . '-ccNo" autocomplete="off">
+                    <input id="' . $form_id . '-ccNo" type="text" name="' . $form_id . '-ccNo" minlength="16" maxlength="16" autocomplete="off">
                 </div>
                 <div class="form-row form-row-wide">
                     <span>Expiry Date <span class="required">*</span></span>
                 </div>
-                <div class="form-row form-row-first">
-                    <input id="' . $form_id . '-expdate-month" name="' . $form_id . '-expdate-month" maxlength="2" type="text" autocomplete="off" placeholder="MM">
-                </div>
-                <div class="form-row form-row-last">
-                    <input id="' . $form_id . '-expdate-year" name="' . $form_id . '-expdate-year" maxlength="2" type="text" autocomplete="off" placeholder="YY">
-                </div>
+                <div class="form-row form-row-first">' . $month_list . '</div>
+                <div class="form-row form-row-last">' . $year_list . '</div>
                 <div class="form-row form-row-wide">
                     <label>Card Code (CVC) <span class="required">*</span></label>
                     <input id="' . $form_id . '-cvv" name="' . $form_id . '-cvv" type="password" maxlength="4" autocomplete="off" placeholder="CVC">

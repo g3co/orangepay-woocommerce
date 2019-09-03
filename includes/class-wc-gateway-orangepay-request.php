@@ -48,7 +48,6 @@ class WC_Gateway_Orangepay_Request
     {
         $this->gateway = $gateway;
         $this->notify_url = WC()->api_request_url('orangepay_webhook');
-        $this->notify_url = "http://kabisov.su/log.php";
         $this->endpoint = $this->gateway->get_option('api_url');
 
         include_once plugin_dir_path(__FILE__) . 'class-wc-gateway-orangepay-helpers.php';

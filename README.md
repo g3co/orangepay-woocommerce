@@ -2,7 +2,10 @@
 
 Orangepay Payment Gateway allows to accept payments via credit cards (Visa / MasterCard / etc.)
 
+## Difference with original
+Original repository https://github.com/hellovoid/orangepay-woocommerce
 
+Charge changed to direct charge method, instead charge method with redirect to payment system page.
 ## Description
 
 This is an Orangepay Payment Gateway package for WooCommerce.
