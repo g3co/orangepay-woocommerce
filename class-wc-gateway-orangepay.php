@@ -8,14 +8,14 @@
   Author URI: https://github.com/hellovoid/orangepay-woocommerce
  */
 
-if ( ! defined('ABSPATH')) exit;
+if (!defined('ABSPATH')) exit;
 
 add_action('plugins_loaded', 'woocommerce_orangepay', 0);
 
 
 function woocommerce_orangepay()
 {
-    if ( ! class_exists('WC_Payment_Gateway'))
+    if (!class_exists('WC_Payment_Gateway'))
         return;
     if (class_exists('WC_Gateway_Orangepay'))
         return;
@@ -25,13 +25,15 @@ function woocommerce_orangepay()
         public static $log_enabled = false;
         public static $log = false;
 
+        protected $payment_data = [];
+
         public function __construct()
         {
             global $woocommerce;
 
             $this->id = 'orangepay';
             $this->icon = apply_filters('woocommerce_orangepay_icon', '' . plugin_dir_url(__FILE__) . 'orangepay.png');
-            $this->has_fields = false;
+            $this->has_fields = true;
             $this->order_button_text = __('Proceed to Orangepay', 'woocommerce');
             $this->method_title = __('Orangepay', 'woocommerce');
             $this->method_description = __('Redirects customers to Orangepay to enter their payment information.', 'woocommerce');
@@ -64,7 +66,7 @@ function woocommerce_orangepay()
             // Payment listener/API hook
             add_action('woocommerce_api_orangepay_webhook', array($this, 'webhook'));
 
-            if ( ! $this->is_valid_for_use()) {
+            if (!$this->is_valid_for_use()) {
                 $this->enabled = false;
             }
         }
@@ -102,7 +104,7 @@ function woocommerce_orangepay()
         /**
          * Get the link for an icon based on country.
          *
-         * @param  string $country Country two letter code (ignored).
+         * @param string $country Country two letter code (ignored).
          * @return string
          */
         protected function get_icon_url($country)
@@ -159,6 +161,46 @@ function woocommerce_orangepay()
             }
         }
 
+        public function payment_fields()
+        {
+
+            $form_id = "wc-" . esc_attr($this->id) . "-cc-form";
+
+            // I will echo() the form, but you can close PHP tags and print it directly in HTML
+            echo '<fieldset id="' . $form_id . '" class="wc-credit-card-form wc-payment-form" style="background:transparent;">';
+
+            // Add this action hook if you want your custom payment gateway to support it
+            do_action('woocommerce_credit_card_form_start', $this->id);
+
+            // I recommend to use inique IDs, because other gateways could already use #ccNo, #expdate, #cvc
+            echo '<div class="form-row form-row-wide"><label>Card Holder <span class="required">*</span></label>
+                    <input id="' . $form_id . '-card-holder" type="text" name="' . $form_id . '-card-holder" autocomplete="off">
+                </div>
+                <div class="form-row form-row-wide"><label>Card Number <span class="required">*</span></label>
+                    <input id="' . $form_id . '-ccNo" type="text" name="' . $form_id . '-ccNo" autocomplete="off">
+                </div>
+                <div class="form-row form-row-wide">
+                    <span>Expiry Date <span class="required">*</span></span>
+                </div>
+                <div class="form-row form-row-first">
+                    <input id="' . $form_id . '-expdate-month" name="' . $form_id . '-expdate-month" maxlength="2" type="text" autocomplete="off" placeholder="MM">
+                </div>
+                <div class="form-row form-row-last">
+                    <input id="' . $form_id . '-expdate-year" name="' . $form_id . '-expdate-year" maxlength="2" type="text" autocomplete="off" placeholder="YY">
+                </div>
+                <div class="form-row form-row-wide">
+                    <label>Card Code (CVC) <span class="required">*</span></label>
+                    <input id="' . $form_id . '-cvv" name="' . $form_id . '-cvv" type="password" maxlength="4" autocomplete="off" placeholder="CVC">
+                </div>
+                <div class="clear"></div>';
+
+            do_action('woocommerce_credit_card_form_end', $this->id);
+
+            echo '<div class="clear"></div></fieldset>';
+
+        }
+
+
         /**
          * Initialise Gateway Settings Form Fields.
          */
@@ -170,7 +212,7 @@ function woocommerce_orangepay()
         /**
          * Process the payment and return the result.
          *
-         * @param  int $order_id Order ID.
+         * @param int $order_id Order ID.
          * @return array
          */
         public function process_payment($order_id)
@@ -179,37 +221,65 @@ function woocommerce_orangepay()
 
             $order = wc_get_order($order_id);
 
+
             include_once plugin_dir_path(__FILE__) . 'includes/class-wc-gateway-orangepay-request.php';
+            include_once plugin_dir_path(__FILE__) . 'includes/class-wc-gateway-orangepay-helpers.php';
+
+            $card = new WC_Gateway_Orangepay_Card();
+            $card->card_holder = $_POST['wc-orangepay-cc-form-card-holder'];
+            $card->card_number = $_POST['wc-orangepay-cc-form-ccNo'];
+            $card->card_expiry_month = $_POST['wc-orangepay-cc-form-expdate-month'];
+            $card->card_expiry_year = $_POST['wc-orangepay-cc-form-expdate-year'];
+            $card->cvv = $_POST['wc-orangepay-cc-form-cvv'];
 
             $orangepay_request = new WC_Gateway_Orangepay_Request($this);
+            $orangepay_request->add_card($card);
 
-            if ($url = $orangepay_request->get_payment_url($order)) {
-                $woocommerce->cart->empty_cart();
+            if ($response = $orangepay_request->process_payment($order)) {
+                switch ($response->status) {
+                    case WC_Gateway_Orangepay_Payment_Response::status_success:
+                        $woocommerce->cart->empty_cart();
+                        $order->add_order_note(
+                            sprintf(__('Transaction has been paid - ID: %1$s', 'woocommerce'), $order->get_transaction_id())
+                        );
+                        $order->payment_complete();
+                        break;
+                    case WC_Gateway_Orangepay_Payment_Response::status_redirect:
+                        $woocommerce->cart->empty_cart();
+                        break;
+                    default:
+                        $order->add_order_note(__('Payment complete event failed.', 'woocommerce') . ' ' . $response->error);
+                        $order->save();
+                        break;
+                }
+
                 return array(
-                    'result'   => 'success',
-                    'redirect' => $url,
+                    'result' => 'success',
+                    'redirect' => $response->redirect_url,
                 );
             }
 
             return new WP_Error('error', __('Orangepay - Could not initialize transaction.', 'woocommerce'));
         }
 
-        public function can_refund_order($order) {
-            return ! $this->testmode;
+        public function can_refund_order($order)
+        {
+            return !$this->testmode;
         }
 
         /**
          * Process a refund if supported.
          *
-         * @param  int    $order_id Order ID.
-         * @param  float  $amount Refund amount.
-         * @param  string $reason Refund reason.
+         * @param int $order_id Order ID.
+         * @param float $amount Refund amount.
+         * @param string $reason Refund reason.
          * @return bool|WP_Error
          */
-        public function process_refund($order_id, $amount = null, $reason = '') {
+        public function process_refund($order_id, $amount = null, $reason = '')
+        {
             $order = wc_get_order($order_id);
 
-            if ( ! $this->can_refund_order($order) || ! preg_match('/^\d+(\.\d+)?$/', $amount)) {
+            if (!$this->can_refund_order($order) || !preg_match('/^\d+(\.\d+)?$/', $amount)) {
                 return new WP_Error('error', __('Refund failed.', 'woocommerce'));
             }
 
