@@ -32,7 +32,7 @@ function woocommerce_orangepay()
             global $woocommerce;
 
             $this->id = 'orangepay';
-            $this->icon = apply_filters('woocommerce_orangepay_icon', '' . plugin_dir_url(__FILE__) . 'orangepay.png');
+            $this->icon = apply_filters('woocommerce_orangepay_icon', '' . plugin_dir_url(__FILE__) . 'OPY.png');
             $this->has_fields = true;
             $this->order_button_text = __('Proceed to Orangepay', 'woocommerce');
             $this->method_title = __('Orangepay', 'woocommerce');
@@ -97,7 +97,7 @@ function woocommerce_orangepay()
         {
             $icon_html = sprintf('<a href="%1$s" class="about_orangepay" onclick="javascript:window.open(\'%1$s\',\'WIOP\',\'toolbar=no, location=no, directories=no, status=no, menubar=no, scrollbars=yes, resizable=yes, width=1060, height=700\'); return false;">' . esc_attr__('What is Orangepay?', 'woocommerce') . '</a>', esc_url($this->get_icon_url($base_country)));
 
-            $icon_html .= '<div style="text-align:center;"><img style="max-width:200px;width:100%;max-height:none;float:none;margin:0 auto;" src="' . esc_attr($this->get_icon_image($base_country)) . '" alt="' . esc_attr__('Orangepay', 'woocommerce') . '" /></div>';
+            $icon_html = '<div style="text-align:center;"><img style="max-width:200px;width:100%;max-height:none;float:none;margin:0 auto;" src="' . esc_attr($this->get_icon_image($base_country)) . '" alt="' . esc_attr__('Credit card', 'woocommerce') . '" /></div>';
             return apply_filters('woocommerce_gateway_icon', $icon_html, $this->id);
         }
 
@@ -120,7 +120,7 @@ function woocommerce_orangepay()
          */
         protected function get_icon_image($country)
         {
-            $icon = plugin_dir_url(__FILE__) . 'assets/images/orangepay.png';
+            $icon = plugin_dir_url(__FILE__) . 'assets/images/OPY.png';
 
             return apply_filters('woocommerce_orangepay_icon', $icon);
         }
